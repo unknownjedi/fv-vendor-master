@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Switch, Route, Link } from "react-router-dom";
 
 import Home from "./components/home";
 import Admin from "./components/admin";
+import ManageProduct from "./components/manageProduct";
 
 import { connect } from "react-redux";
 
@@ -17,6 +18,7 @@ class App extends Component {
       <div className="App">
         <Router>
           <Switch>
+            <Route path="/admin/manage" exact component={ManageProduct} />
             <Route path="/admin" exact component={Admin} />
             <Route path="/" exact component={Home} />
           </Switch>

@@ -1,7 +1,9 @@
 import React, { Component } from "react";
+import {Link} from 'react-router-dom';
 import axios from "axios";
 import AddProduct from "./addProduct";
 import EditProduct from "./editProduct";
+import ManageProduct from './manageProduct';
 
 class Admin extends Component {
   state = {};
@@ -84,22 +86,24 @@ class Admin extends Component {
       <div>
         <center><h1>Admin Page</h1></center>
         <div className="container admin-cards">
+        <Link to="/admin/manage">
         <div className="card edit-products" onClick={this.handleEditProduct}>
-            <label>Edit/Remove Product</label>
+            <label>Manage Products</label>
             <br />
             <br />
             <label>
               <span style={{ fontSize: 40 }}>+</span>
             </label>
           </div>
-          <div className="card add-products" onClick={this.handleSingleProduct}>
+        </Link>
+          {/* <div className="card add-products" onClick={this.handleSingleProduct}>
             <label>Add New Product</label>
             <br />
             <br />
             <label>
               <span style={{ fontSize: 40 }}>+</span>
             </label>
-          </div>
+          </div> */}
           <div className="card bulk-products">
             <div className="form-group">
               <label>Bulk Upload</label>
@@ -126,7 +130,7 @@ class Admin extends Component {
           <AddProduct onClose={this.handleModelClose} />
         )}
         {this.state.model === 2 && (
-          <EditProduct onClose={this.handleModelClose} />
+          <ManageProduct onClose={this.handleModelClose} />
         )}
       </div>
     );

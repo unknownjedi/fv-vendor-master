@@ -19,8 +19,8 @@ class AddProduct extends Component {
         discount: 0,
       },
       seller_details: {
-        seller_name: "",
-        seller_id: "",
+        seller_name: "Bismilla",
+        seller_id: "2",
       },
       product_images: [],
       product_category: "",
@@ -192,56 +192,72 @@ class AddProduct extends Component {
     }
   };
 
-  getImageLink = async () => {
-    let response = await axios.get(
-      "https://static-upload.furniturevillages.com/upload/getImagePreSignedUrl",
-      {},
-      {}
-    );
-    let predata = response.data;
-    return {
-      uploadLink: predata.uploadURL,
-      uploadKey: predata.storageUrl,
-    };
+  getImageLink = () => {
+    return new Promise(async (resolve, reject) => {
+      let response = await axios.get(
+        "https://static-upload.furniturevillages.com/upload/getImagePreSignedUrl",
+        {},
+        {}
+      );
+      let predata = response.data;
+      resolve({
+        uploadLink: predata.uploadURL,
+        uploadKey: predata.storageUrl,
+      });
+    })
   };
 
-  uploadProductImages = async () => {
-    let imagesArray = this.state.image_files;
-    let product_images = [];
-    await imagesArray.map(async (img, img_index) => {
+  uploadProductImages = () => {
+    return new Promise(async (resolve, reject) => {
+      let imagesArray = this.state.image_files;
+      let product_images = [];
+      imagesArray.forEach(async (img, img_index) => {
+        let upLink = await this.getImageLink();
+         console.log(upLink);
+        axios
+          .put(upLink.uploadLink, img.file, {
+            onUploadProgress: (pEvent) => {
+              let progress = Math.round((pEvent.loaded / pEvent.total) * 100);
+              // console.log(progress + "%");
+            },
+          })
+          .then((res) => {
+            product_images = [...product_images, { image_url: upLink.uploadKey }];
+            let product = { ...this.state.product, product_images };
+            this.setState({ product }, () => {
+              console.log(this.state.product.product_images);
+              if (img_index === imagesArray.length - 1) {
+                resolve();
+              }
+            });
+          });
+
+        
+      });
+    });
+    // console.log(imgLinks);
+  };
+  uploadThumbnail = async () => {
+    return new Promise(async (resolve, reject) => {
+      let img = this.state.thumbnail_file;
       let upLink = await this.getImageLink();
       // console.log(upLink);
       axios
-        .put(upLink.uploadLink, img.file, {
+        .put(upLink.uploadLink, img, {
           onUploadProgress: (pEvent) => {
             let progress = Math.round((pEvent.loaded / pEvent.total) * 100);
             // console.log(progress + "%");
           },
         })
         .then((res) => {
-          product_images = [...product_images, {image_url:upLink.uploadKey}];
-          let product = { ...this.state.product, product_images };
-          this.setState({ product });
+          let product_thumbnail = upLink.uploadKey;
+          let product = { ...this.state.product, product_thumbnail };
+          this.setState({ product }, () => {
+            console.log(this.state.product.product_thumbnail);
+            resolve();
+          });
         });
-    });
-    // console.log(imgLinks);
-  };
-  uploadThumbnail = async () => {
-    let img = this.state.thumbnail_file;
-    let upLink = await this.getImageLink();
-    // console.log(upLink);
-    axios
-      .put(upLink.uploadLink, img, {
-        onUploadProgress: (pEvent) => {
-          let progress = Math.round((pEvent.loaded / pEvent.total) * 100);
-          // console.log(progress + "%");
-        },
-      })
-      .then((res) => {
-        let product_thumbnail = upLink.uploadKey;
-        let product = { ...this.state.product, product_thumbnail };
-        this.setState({ product });
-      });
+    })
   };
 
   onImgChange = (i) => {
@@ -261,20 +277,22 @@ class AddProduct extends Component {
     this.setState({ product, image_files });
   };
 
-  handleFormSubmit = (e) => {
+  handleFormSubmit = async (e) => {
     e.preventDefault();
-    this.uploadThumbnail();
-    this.uploadProductImages();
+    await this.uploadThumbnail();
+    await this.uploadProductImages();
     this.sendData();
     return false;
   };
 
-  sendData = ()=>{
-    const {product} = this.state;
+  sendData = () => {
+    const { product } = this.state;
     // console.log(JSON.stringify(product));
     console.log("Uploading New Product")
-    axios.post(addProductUrl,product).then((res)=>{
-      console.log(res.status);
+    console.log(product);
+    axios.post(addProductUrl, product).then((res) => {
+      //console.log(res.status);
+      this.props.onClose();
       console.log(res.data);
     });
   }
@@ -356,8 +374,8 @@ class AddProduct extends Component {
                           height="100"
                         />
                       ) : (
-                        <span>+</span>
-                      )}
+                          <span>+</span>
+                        )}
                     </div>
                   </div>
                 </div>

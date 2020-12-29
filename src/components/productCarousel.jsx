@@ -26,7 +26,6 @@ class ProductCarousel extends Component {
       imgHovered: -1,
       files: [],
     };
-    this.renderImage();
   }
   componentDidMount() {
     this.renderImage();
@@ -134,23 +133,29 @@ class ProductCarousel extends Component {
 
   renderImage = () => {
     let files = this.props.fileArr;
-    for (let i = 0; i < files.length; i++) {
-      let reader = new FileReader();
-      reader.onloadend = () => {
-        let f = [...this.state.files, { file: files[i], img: reader.result }];
-        this.setState({ files: f });
-      };
-      try {
-        reader.readAsDataURL(files[i]);
-      } catch (err) {
-        console.log("reader error for index", i);
-        console.log(err);
+    const {onEdit} = this.props;
+    if(onEdit){
+      this.setState({ files});
+    }else{
+      for (let i = 0; i < files.length; i++) {
+        let reader = new FileReader();
+        reader.onloadend = () => {
+          let f = [...this.state.files, { file: files[i], img: reader.result }];
+          this.setState({ files: f });
+        };
+        try {
+          
+          reader.readAsDataURL(files[i]);
+        } catch (err) {
+          console.log("reader error for index", i);
+          console.log(err);
+        }
       }
     }
   };
 
   render() {
-    const { imgArr, fileArr } = this.props;
+    const { imgArr, fileArr,onEdit } = this.props;
     const { imgHovered, files } = this.state;
     return (
       <div className="card product-carousel">

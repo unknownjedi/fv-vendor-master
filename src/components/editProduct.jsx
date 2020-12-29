@@ -5,13 +5,18 @@ import ProductCarousel from "./productCarousel";
 import axios from "axios";
 
 import {loadProduct} from '../store/product/actions';
+import {startLoader,stopLoader} from '../store/loader/actions';
 
+var updateProductUrl = "https://cors-anywhere.herokuapp.com/http://13.127.249.221:8000/vendor/update/product";
 export class EditProduct extends Component {
-    state = {};
+    state = {
+      product:{},
+      loading:false
+    };
   constructor(props) {
     super(props);
 
-    let productTemp = {
+    let product = {
         product_id:"",
         product_title: "",
         product_description: "",
@@ -42,11 +47,19 @@ export class EditProduct extends Component {
           packing_charge: "",
         },
       };
-    //   let product = this.props.product;
-    let product = productTemp;
-    this.props.loadProduct(product);
-    this.state = { product, selected: -1, image_files: [], thumbnail_file: "" };
-  }
+      product = this.props.product;
+      let image_files = [];
+      product.product_images.map((image,i)=>{
+        image_files = [...image_files,{img:image.image_url}]
+      })
+      console.log(product.product_images);
+      let prevThumbnail = product.product_thumbnail;
+      let prevProductImages = image_files;
+      // this.props.loadProduct(product);
+      this.state = {product, image_files, selected: -1, thumbnail_file: "",prevThumbnail,prevProductImages };
+
+        }
+ 
 
   componentDidUpdate(prevProp,prevState){
     this.updateState(prevState);
@@ -75,7 +88,7 @@ export class EditProduct extends Component {
     product_specification = product_specification.filter((spec, index) => {
       if (index === i) {
         spec[key] = val;
-        console.log(spec);
+        // console.log(spec);
       }
       return spec;
     });
@@ -154,7 +167,7 @@ export class EditProduct extends Component {
         isVariants: !this.state.product.product_varients.isVariants,
       },
     };
-    console.log(target.value);
+    // console.log(target.value);
     this.setState({ product });
   };
 
@@ -162,7 +175,7 @@ export class EditProduct extends Component {
     e.preventDefault();
     let reader = new FileReader();
     let file = e.target.files[0];
-    console.log(file);
+    // console.log(file);
     reader.onloadend = () => {
       let product = { ...this.state.product, product_thumbnail: reader.result };
       this.setState({ product });
@@ -203,56 +216,79 @@ export class EditProduct extends Component {
     }
   };
 
-  getImageLink = async () => {
-    let response = await axios.get(
-      "https://static-upload.furniturevillages.com/upload/getImagePreSignedUrl",
-      {},
-      {}
-    );
-    let predata = response.data;
-    return {
-      uploadLink: predata.uploadURL,
-      uploadKey: predata.storageUrl,
-    };
+  getImageLink = () => {
+    return new Promise(async (resolve, reject) => {
+      let response = await axios.get(
+        "https://static-upload.furniturevillages.com/upload/getImagePreSignedUrl",
+        {},
+        {}
+      );
+      let predata = response.data;
+      resolve({
+        uploadLink: predata.uploadURL,
+        uploadKey: predata.storageUrl,
+      });
+    })
   };
 
-  uploadProductImages = async () => {
-    let imagesArray = this.state.image_files;
-    let product_images = [];
-    await imagesArray.map(async (img, img_index) => {
-      let upLink = await this.getImageLink();
-      // console.log(upLink);
-      axios
-        .put(upLink.uploadLink, img.file, {
-          onUploadProgress: (pEvent) => {
-            let progress = Math.round((pEvent.loaded / pEvent.total) * 100);
-            console.log(progress + "%");
-          },
-        })
-        .then((res) => {
-          product_images = [...product_images, upLink.uploadKey];
-          let product = { ...this.state.product, product_images };
-          this.setState({ product });
-        });
+  uploadProductImages = () => {
+    return new Promise(async (resolve, reject) => {
+      let imagesArray = this.state.image_files;
+      const {prevProductImages} = this.state;
+      let product_images = [];
+      imagesArray.forEach(async (img, img_index) => {
+        if(!prevProductImages.includes(img)){
+          let upLink = await this.getImageLink();
+         console.log(upLink);
+        axios
+          .put(upLink.uploadLink, img.file, {
+            onUploadProgress: (pEvent) => {
+              let progress = Math.round((pEvent.loaded / pEvent.total) * 100);
+              // console.log(progress + "%");
+            },
+          })
+          .then((res) => {
+            product_images = [...product_images, { image_url: upLink.uploadKey }];
+            let product = { ...this.state.product, product_images };
+            this.setState({ product }, () => {
+              console.log(this.state.product.product_images);
+              if (img_index === imagesArray.length - 1) {
+                resolve();
+              }
+            });
+          });
+        }else{
+          if (img_index === imagesArray.length - 1) {
+            resolve();
+          }
+        }
+
+        
+      });
     });
     // console.log(imgLinks);
   };
   uploadThumbnail = async () => {
-    let img = this.state.thumbnail_file;
-    let upLink = await this.getImageLink();
-    // console.log(upLink);
-    axios
-      .put(upLink.uploadLink, img, {
-        onUploadProgress: (pEvent) => {
-          let progress = Math.round((pEvent.loaded / pEvent.total) * 100);
-          console.log(progress + "%");
-        },
-      })
-      .then((res) => {
-        let product_thumbnail = upLink.uploadKey;
-        let product = { ...this.state.product, product_thumbnail };
-        this.setState({ product });
-      });
+    return new Promise(async (resolve, reject) => {
+      let img = this.state.thumbnail_file;
+      let upLink = await this.getImageLink();
+      // console.log(upLink);
+      axios
+        .put(upLink.uploadLink, img, {
+          onUploadProgress: (pEvent) => {
+            let progress = Math.round((pEvent.loaded / pEvent.total) * 100);
+            // console.log(progress + "%");
+          },
+        })
+        .then((res) => {
+          let product_thumbnail = upLink.uploadKey;
+          let product = { ...this.state.product, product_thumbnail };
+          this.setState({ product }, () => {
+            console.log(this.state.product.product_thumbnail);
+            resolve();
+          });
+        });
+    })
   };
 
   onImgChange = (i) => {
@@ -272,12 +308,31 @@ export class EditProduct extends Component {
     this.setState({ product, image_files });
   };
 
-  handleFormSubmit = (e) => {
+  handleFormSubmit = async (e) => {
     e.preventDefault();
-    this.uploadThumbnail();
-    this.uploadProductImages();
+    this.props.startLoader();
+    const {prevThumbnail,product} = this.state;
+    if(prevThumbnail!==product.product_thumbnail){
+      await this.uploadThumbnail();
+    }
+    await this.uploadProductImages();
+    this.sendData();
     return false;
   };
+  
+  sendData = () => {
+    const { product,loading } = this.state;
+    console.log(loading);
+    // console.log(JSON.stringify(product));
+    console.log("Uploading New Product")
+    console.log(product);
+    axios.post(updateProductUrl, product).then((res) => {
+      console.log(res.data);
+      this.props.stopLoader();
+      this.props.onClose();
+      // this.props.onSave(product);
+    });
+  }
 
   updateState = (prevState)=>{
     const {loadProduct} = this.props;
@@ -388,6 +443,7 @@ export class EditProduct extends Component {
                     <ProductCarousel
                       imgArr={product_images}
                       fileArr={this.state.image_files}
+                      onEdit={true}
                       onSelected={this.onImgChange}
                       onRemoved={this.handleRemoveImage}
                     />
@@ -637,12 +693,14 @@ export class EditProduct extends Component {
 }
 
 const mapStateToProps = (state) => {
-    const { product } = state;
-    return { product: product };
+    const { product,loading } = state;
+    return { product,loading };
   };
   
   const mapDispatchToProps = (dispatch) => ({
     loadProduct: (product) => dispatch(loadProduct(product)),
+    startLoader: ()=>dispatch(startLoader()),
+    stopLoader: ()=>dispatch(stopLoader()),
   });
   
   export default connect(mapStateToProps, mapDispatchToProps)(EditProduct)
